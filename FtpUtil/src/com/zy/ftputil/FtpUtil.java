@@ -72,28 +72,27 @@ public class FtpUtil {
 	public void Download() {
 		FTPClient ftpClient = CreateFTPClient();
 		if (ftpClient != null)
-			DownloadFileFromFtp(ftpClient);
+			DownloadFileFromFtp(ftpClient, remotePath, localPath);
 	}
 
 	public void Upload() {
 		FTPClient ftpClient = CreateFTPClient();
 		if (ftpClient != null)
-			UploadFileFromFtp(ftpClient);
+			UploadFileFromFtp(ftpClient, remotePath, localPath);
 	}
 
-	private void DownloadFileFromFtp(FTPClient ftpClient) {
+	private void DownloadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
 		try {
-			if (ftpClient.changeWorkingDirectory(remotePath)) {
-				ScanFtpFileList(remotePath, ftpClient);
-			} else {
+			if (!ftpClient.changeWorkingDirectory(remotepath))
 				System.out.println("WorkingDirectory doesn't exist.");
-			}
+			ScanFtpFileList(ftpClient, remotepath, localpath);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} finally {
 			try {
-				ftpClient.logout();
+				if (ftpClient.isAvailable())
+					ftpClient.logout();
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -108,17 +107,21 @@ public class FtpUtil {
 		}
 	}
 
-	private void UploadFileFromFtp(FTPClient ftpClient) {
+	private void UploadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
 		try {
-			if (!ftpClient.changeWorkingDirectory(remotePath))
+			if (!ftpClient.changeWorkingDirectory(remotepath)) {
 				System.out.println("WorkingDirectory doesn't exist.");
-			ScanLocalFileList(localPath);
+				ftpClient.makeDirectory(remotepath);
+				ftpClient.changeWorkingDirectory(remotepath);
+			}
+			ScanLocalFileList(ftpClient, remotepath, localpath);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} finally {
 			try {
-				ftpClient.logout();
+				if (ftpClient.isAvailable())
+					ftpClient.logout();
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -133,16 +136,20 @@ public class FtpUtil {
 		}
 	}
 
-	private void ScanFtpFileList(String path, FTPClient ftpClient) {
+	private void ScanFtpFileList(FTPClient ftpClient, String remotepath, String localpath) {
 		try {
 			FTPFile[] files = ftpClient.listFiles();
 			if (files != null && files.length > 0) {
 				System.out.println("Find " + files.length + " files.");
 				for (FTPFile file : files) {
 					if (file.isFile()) {
-						if (file.getName().toString().toUpperCase().endsWith("ZIP")) {
-							new DownloadThread(file.getName(), file.getSize()).start();
-						}
+						new DownloadThread(file.getName(), file.getSize(), remotepath, localpath).start();
+					} else if (file.isDirectory()) {
+						File localfile = new File(localpath + File.separator + file.getName());
+						if (!localfile.exists())
+							localfile.mkdirs();
+						DownloadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(),
+								localfile.getAbsolutePath());
 					}
 				}
 			} else
@@ -153,15 +160,15 @@ public class FtpUtil {
 		}
 	}
 
-	private void ScanLocalFileList(String path) {
-		File[] files = new File(path).listFiles();
+	private void ScanLocalFileList(FTPClient ftpClient, String remotepath, String localpath) {
+		File[] files = new File(localpath).listFiles();
 		if (files != null && files.length > 0) {
 			System.out.println("Find " + files.length + " files.");
 			for (File file : files) {
 				if (file.isFile()) {
-					if (file.getName().toString().toUpperCase().endsWith("ZIP")) {
-						new UploadThread(file.getAbsolutePath(), file.getName(), file.length()).start();
-					}
+					new UploadThread(file.getName(), file.length(), remotepath, file.getAbsolutePath()).start();
+				} else if (file.isDirectory()) {
+					UploadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(), file.getAbsolutePath());
 				}
 			}
 		} else
@@ -171,10 +178,14 @@ public class FtpUtil {
 	private class DownloadThread extends Thread {
 		private String name;
 		private long size;
+		private String localpath;
+		private String remotepath;
 
-		public DownloadThread(String name, long size) {
+		public DownloadThread(String name, long size, String remotepath, String localpath) {
 			this.name = name;
 			this.size = size;
+			this.localpath = localpath;
+			this.remotepath = remotepath;
 		}
 
 		@Override
@@ -182,13 +193,13 @@ public class FtpUtil {
 			FTPClient ftpClient = CreateFTPClient();
 			if (ftpClient == null)
 				return;
+			boolean success = false;
 			try {
-				ftpClient.changeWorkingDirectory(remotePath);
+				ftpClient.changeWorkingDirectory(remotepath);
 				ftpClient.setBufferSize(BUFF_SIZE);
 				ftpClient.setFileType(FTPClient.BINARY_FILE_TYPE);
 				ftpClient.enterLocalPassiveMode();
-				String localpath = localPath + File.separator + name;
-				File localfile = new File(localpath);
+				File localfile = new File(localpath + File.separator + name);
 				if (!localfile.exists()) {
 					try {
 						localfile.createNewFile();
@@ -202,10 +213,11 @@ public class FtpUtil {
 				}
 				try {
 					OutputStream outputStream = new FileOutputStream(localfile);
-					ftpClient.retrieveFile(new String(name.getBytes(System.getProperty("file.encoding")), "ISO-8859-1"),
-							outputStream);
+					success = ftpClient.retrieveFile(
+							new String(name.getBytes(System.getProperty("file.encoding")), "ISO-8859-1"), outputStream);
 					outputStream.close();
-					ftpClient.logout();
+					if (ftpClient.isAvailable())
+						ftpClient.logout();
 					if (ftpClient.isConnected()) {
 						try {
 							ftpClient.disconnect();
@@ -220,10 +232,10 @@ public class FtpUtil {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
-				if (localfile.length() != this.size)
-					localfile.delete();
-				else
+				if (localfile.length() == this.size && success)
 					System.out.println("Download file successfully: " + localfile.getName());
+				else
+					localfile.delete();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -232,14 +244,16 @@ public class FtpUtil {
 	}
 
 	private class UploadThread extends Thread {
-		private String filePath;
 		private String name;
 		private long size;
+		private String localpath;
+		private String remotepath;
 
-		public UploadThread(String filePath, String name, long size) {
-			this.filePath = filePath;
+		public UploadThread(String name, long size, String remotepath, String localpath) {
 			this.name = name;
 			this.size = size;
+			this.localpath = localpath;
+			this.remotepath = remotepath;
 		}
 
 		@Override
@@ -252,14 +266,14 @@ public class FtpUtil {
 				ftpClient.setBufferSize(BUFF_SIZE);
 				ftpClient.setFileType(FTPClient.BINARY_FILE_TYPE);
 				ftpClient.enterLocalPassiveMode();
-				InputStream inputStream = new FileInputStream(new File(filePath));
-				if (!ftpClient.changeWorkingDirectory(remotePath)) {
-					if (!ftpClient.makeDirectory(remotePath)) {
-						inputStream.close();
+				if (!ftpClient.changeWorkingDirectory(remotepath)) {
+					if (!ftpClient.makeDirectory(remotepath)) {
+						System.out.println("Make ftp directory fail.");
 						return;
 					}
-					ftpClient.changeWorkingDirectory(remotePath);
+					ftpClient.changeWorkingDirectory(remotepath);
 				}
+				InputStream inputStream = new FileInputStream(new File(localpath));
 				success = ftpClient.storeFile(
 						new String(name.getBytes(System.getProperty("file.encoding")), "ISO-8859-1"), inputStream);
 				inputStream.close();
@@ -271,7 +285,8 @@ public class FtpUtil {
 				e.printStackTrace();
 			} finally {
 				try {
-					ftpClient.logout();
+					if (ftpClient.isAvailable())
+						ftpClient.logout();
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
