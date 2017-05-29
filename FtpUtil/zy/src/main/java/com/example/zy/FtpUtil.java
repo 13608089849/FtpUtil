@@ -95,7 +95,6 @@ public class FtpUtil {
 
     /**
      * 下载接口
-     *
      */
     public void Download() {
         FTPClient ftpClient = CreateFTPClient();
@@ -104,8 +103,7 @@ public class FtpUtil {
     }
 
     /**
-     * 长传接口
-     *
+     * 上传接口
      */
     public void Upload() {
         FTPClient ftpClient = CreateFTPClient();
