@@ -26,13 +26,12 @@ public class FtpUtil {
     /**
      * 设置FTP客户端全局参数
      *
-     * @param port 端口，默认为21
-     * @param ipAddress IP地址
-     * @param user 用戶名
-     * @param password 密碼
+     * @param port       端口，默认为21
+     * @param ipAddress  IP地址
+     * @param user       用戶名
+     * @param password   密碼
      * @param remotePath 远程地址
-     * @param localPath 本地地址
-     *
+     * @param localPath  本地地址
      */
     public void SetParams(int port, String ipAddress, String user, String password, String remotePath,
                           String localPath) {
@@ -48,7 +47,6 @@ public class FtpUtil {
      * 设置连接超时
      *
      * @param CONNECT_TIME_OUT 连接超时，默认为一分钟
-     *
      */
     public void SetConnectTimeOut(int CONNECT_TIME_OUT) {
         this.CONNECT_TIME_OUT = CONNECT_TIME_OUT;
@@ -58,7 +56,6 @@ public class FtpUtil {
      * 设置传输超时
      *
      * @param DATA_TIME_OUT 传输超时，默认为一分钟
-     *
      */
     public void SetDataTimeOut(int DATA_TIME_OUT) {
         this.DATA_TIME_OUT = DATA_TIME_OUT;
@@ -116,7 +113,6 @@ public class FtpUtil {
             File localfile = new File(localpath);
             if (!localfile.exists()) {
                 localfile.mkdirs();
-                System.out.println("Make directory: " + localfile.getAbsolutePath());
             }
             if (!ftpClient.changeWorkingDirectory(remotepath)) {
                 String parentpath = remotepath.substring(0, remotepath.lastIndexOf(File.separator));
@@ -266,7 +262,7 @@ public class FtpUtil {
                 try {
                     OutputStream outputStream = new FileOutputStream(localfile);
                     success = ftpClient.retrieveFile(
-                            new String(name.getBytes(System.getProperty("file.encoding")), "ISO-8859-1"), outputStream);
+                            new String(name.getBytes(System.getProperty("file.encoding")), "GBK"), outputStream);//ISO-8859-1
                     outputStream.close();
                     if (ftpClient.isAvailable())
                         ftpClient.logout();
@@ -283,9 +279,12 @@ public class FtpUtil {
                     e.printStackTrace();
                 }
                 if (localfile.length() == this.size && success)
-                    System.out.println("Download file successfully: " + localfile.getName());
-                else
+                    System.out.println("<SUCCESSFUL> Download file successfully: " + localfile.getName());
+                else {
+                    System.out.println("<FAILURE> Download file unsuccessfully: " + localfile.getName());
+                    System.out.println("Please check if the filename includes Chinese.");
                     localfile.delete();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -316,7 +315,7 @@ public class FtpUtil {
                 ftpClient.enterLocalPassiveMode();
                 if (!ftpClient.changeWorkingDirectory(remotepath)) {
                     if (!ftpClient.makeDirectory(remotepath)) {
-                        System.out.println("Make ftp directory fail.");
+                        System.out.println("Make ftp directory failure.");
                         return;
                     }
                     ftpClient.changeWorkingDirectory(remotepath);
@@ -324,7 +323,7 @@ public class FtpUtil {
                 System.out.println("Start to upload: " + name);
                 InputStream inputStream = new FileInputStream(new File(localpath));
                 success = ftpClient.storeFile(
-                        new String(name.getBytes(System.getProperty("file.encoding")), "ISO-8859-1"), inputStream);
+                        new String(name.getBytes(System.getProperty("file.encoding")), "UTF-8"), inputStream);//ISO-8859-1
                 inputStream.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -346,13 +345,10 @@ public class FtpUtil {
                 }
             }
             if (!success) {
-                try {
-                    ftpClient.deleteFile(name);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                System.out.println("<FAILURE> Upload unsuccessfully: " + name);
+                System.out.println("Please check if the filename includes Chinese.");
             } else
-                System.out.println("Upload successfully: " + name);
+                System.out.println("<SUCCESSFUL> Upload successfully: " + name);
         }
     }
 }
