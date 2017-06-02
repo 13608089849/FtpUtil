@@ -33,7 +33,7 @@ public class FtpUtil {
      * @param remotePath 远程地址
      * @param localPath  本地地址
      */
-    public void SetParams(int port, String ipAddress, String user, String password, String remotePath,
+    public void setParams(int port, String ipAddress, String user, String password, String remotePath,
                           String localPath) {
         this.port = port;
         this.ipAddress = ipAddress;
@@ -48,7 +48,7 @@ public class FtpUtil {
      *
      * @param CONNECT_TIME_OUT 连接超时，默认为一分钟
      */
-    public void SetConnectTimeOut(int CONNECT_TIME_OUT) {
+    public void setConnectTimeOut(int CONNECT_TIME_OUT) {
         this.CONNECT_TIME_OUT = CONNECT_TIME_OUT;
     }
 
@@ -57,11 +57,11 @@ public class FtpUtil {
      *
      * @param DATA_TIME_OUT 传输超时，默认为一分钟
      */
-    public void SetDataTimeOut(int DATA_TIME_OUT) {
+    public void setDataTimeOut(int DATA_TIME_OUT) {
         this.DATA_TIME_OUT = DATA_TIME_OUT;
     }
 
-    private FTPClient CreateFTPClient() {
+    private FTPClient createFTPClient() {
         FTPClient ftpClient = new FTPClient();
         try {
             ftpClient.connect(ipAddress, port);
@@ -93,22 +93,22 @@ public class FtpUtil {
     /**
      * 下载接口
      */
-    public void Download() {
-        FTPClient ftpClient = CreateFTPClient();
+    public void download() {
+        FTPClient ftpClient = createFTPClient();
         if (ftpClient != null)
-            DownloadFileFromFtp(ftpClient, remotePath, localPath);
+            downloadFileFromFtp(ftpClient, remotePath, localPath);
     }
 
     /**
      * 上传接口
      */
-    public void Upload() {
-        FTPClient ftpClient = CreateFTPClient();
+    public void upload() {
+        FTPClient ftpClient = createFTPClient();
         if (ftpClient != null)
-            UploadFileFromFtp(ftpClient, remotePath, localPath);
+            uploadFileFromFtp(ftpClient, remotePath, localPath);
     }
 
-    private void DownloadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
+    private void downloadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
         try {
             File localfile = new File(localpath);
             if (!localfile.exists()) {
@@ -117,7 +117,7 @@ public class FtpUtil {
             if (!ftpClient.changeWorkingDirectory(remotepath)) {
                 String parentpath = remotepath.substring(0, remotepath.lastIndexOf(File.separator));
                 String filename = remotepath.substring(remotepath.lastIndexOf(File.separator) + 1);
-                FTPClient parentClient = CreateFTPClient();
+                FTPClient parentClient = createFTPClient();
                 parentClient.changeWorkingDirectory(parentpath);
                 if (parentClient != null) {
                     FTPFile[] childFile = parentClient.listFiles();
@@ -129,7 +129,7 @@ public class FtpUtil {
                     }
                 }
             } else
-                ScanFtpFileList(ftpClient, remotepath, localpath);
+                scanFtpFileList(ftpClient, remotepath, localpath);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -149,14 +149,14 @@ public class FtpUtil {
         }
     }
 
-    private void UploadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
+    private void uploadFileFromFtp(FTPClient ftpClient, String remotepath, String localpath) {
         try {
             if (!ftpClient.changeWorkingDirectory(remotepath)) {
                 System.out.println("WorkingDirectory doesn't exist.");
                 ftpClient.makeDirectory(remotepath);
                 ftpClient.changeWorkingDirectory(remotepath);
             }
-            ScanLocalFileList(ftpClient, remotepath, localpath);
+            scanLocalFileList(ftpClient, remotepath, localpath);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -176,7 +176,7 @@ public class FtpUtil {
         }
     }
 
-    private void ScanFtpFileList(FTPClient ftpClient, String remotepath, String localpath) {
+    private void scanFtpFileList(FTPClient ftpClient, String remotepath, String localpath) {
         try {
             FTPFile[] files = ftpClient.listFiles();
             if (files != null && files.length > 0) {
@@ -188,7 +188,7 @@ public class FtpUtil {
                         File localfile = new File(localpath + File.separator + file.getName());
                         if (!localfile.exists())
                             localfile.mkdirs();
-                        DownloadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(),
+                        downloadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(),
                                 localfile.getAbsolutePath());
                     }
                 }
@@ -199,7 +199,7 @@ public class FtpUtil {
         }
     }
 
-    private void ScanLocalFileList(FTPClient ftpClient, String remotepath, String localpath) {
+    private void scanLocalFileList(FTPClient ftpClient, String remotepath, String localpath) {
         File localfile = new File(localpath);
         if (!localfile.exists()) {
             System.out.println("File doesn't exist.");
@@ -215,7 +215,7 @@ public class FtpUtil {
                     if (file.isFile()) {
                         new UploadHandle(file.getName(), file.length(), remotepath, file.getAbsolutePath()).run();
                     } else if (file.isDirectory()) {
-                        UploadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(),
+                        uploadFileFromFtp(ftpClient, remotepath + File.separator + file.getName(),
                                 file.getAbsolutePath());
                     }
                 }
@@ -238,7 +238,7 @@ public class FtpUtil {
         }
 
         public void run() {
-            FTPClient ftpClient = CreateFTPClient();
+            FTPClient ftpClient = createFTPClient();
             if (ftpClient == null)
                 return;
             boolean success = false;
@@ -279,9 +279,9 @@ public class FtpUtil {
                     e.printStackTrace();
                 }
                 if (localfile.length() == this.size && success)
-                    System.out.println("<SUCCESSFUL> Download file successfully: " + localfile.getName());
+                    System.out.println("<SUCCESSFUL> download file successfully: " + localfile.getName());
                 else {
-                    System.out.println("<FAILURE> Download file unsuccessfully: " + localfile.getName());
+                    System.out.println("<FAILURE> download file unsuccessfully: " + localfile.getName());
                     System.out.println("Please check if the filename includes Chinese.");
                     localfile.delete();
                 }
@@ -305,7 +305,7 @@ public class FtpUtil {
         }
 
         public void run() {
-            FTPClient ftpClient = CreateFTPClient();
+            FTPClient ftpClient = createFTPClient();
             if (ftpClient == null)
                 return;
             boolean success = false;
@@ -345,10 +345,10 @@ public class FtpUtil {
                 }
             }
             if (!success) {
-                System.out.println("<FAILURE> Upload unsuccessfully: " + name);
+                System.out.println("<FAILURE> upload unsuccessfully: " + name);
                 System.out.println("Please check if the filename includes Chinese.");
             } else
-                System.out.println("<SUCCESSFUL> Upload successfully: " + name);
+                System.out.println("<SUCCESSFUL> upload successfully: " + name);
         }
     }
 }
