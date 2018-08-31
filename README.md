@@ -23,7 +23,3 @@ Copying this jar file to your lib directory of project, and adding dependency.
 	ftpUtil.setDataTimeOut(20000);
 	ftpUtil.upload();
 	
----
-
-![测试图片](https://github.com/frogfans/FtpUtil/blob/master/test.png)
-	
